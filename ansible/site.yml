@@ -1,0 +1,9 @@
+---
+- name: Provision and deploy homelab stack on pegasus.local
+  hosts: pi
+  become: true
+  gather_facts: true
+  roles:
+    - docker
+    - storage
+    - deploy

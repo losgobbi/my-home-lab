@@ -1,0 +1,3 @@
+collections:
+  - name: community.docker # provides docker_compose_v2 (used by the deploy role)
+  - name: ansible.posix # provides the mount module (used by the storage role)

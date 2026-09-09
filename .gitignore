@@ -1,0 +1,11 @@
+# secrets
+docker/.env
+
+# ansible
+*.retry
+ansible/inventory/hosts.override.ini
+
+# misc
+__pycache__/
+.DS_Store
+.vscode-ctags

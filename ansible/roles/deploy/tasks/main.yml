@@ -1,0 +1,36 @@
+---
+- name: Ensure remote compose directory exists
+  ansible.builtin.file:
+    path: "{{ compose_remote_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Copy docker-compose.yml
+  ansible.builtin.copy:
+    src: "{{ compose_local_dir }}/docker-compose.yml"
+    dest: "{{ compose_remote_dir }}/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Copy .env (secrets) — never logged, never diffed
+  ansible.builtin.copy:
+    src: "{{ compose_local_dir }}/.env"
+    dest: "{{ compose_remote_dir }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+  diff: false
+
+- name: Bring the stack up (docker compose up -d, idempotent)
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_remote_dir }}"
+    state: present
+  register: compose_result
+
+- name: Show what changed
+  ansible.builtin.debug:
+    var: compose_result.changed

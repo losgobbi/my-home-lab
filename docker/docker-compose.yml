@@ -1,0 +1,75 @@
+# Quick start:
+#   cp .env.example .env && edit it
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+# Requires /mnt/storage (LABEL=storage) already mounted — see README.
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+services:
+  pihole:
+    <<: *restart-policy
+    image: pihole/pihole:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+    environment:
+      TZ: ${TZ}
+      FTLCONF_webserver_api_password: ${PIHOLE_ADMIN_PASSWORD}
+      FTLCONF_dns_listeningMode: ALL
+    volumes:
+      - /mnt/storage/pihole/etc-pihole:/etc/pihole
+      - /mnt/storage/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+
+  samba:
+    <<: *restart-policy
+    image: ghcr.io/servercontainers/samba:latest
+    network_mode: host
+    environment:
+      # IMPORTANT: list form, not mapping form, for the account line — Compose
+      # interpolates ${VARS} as raw text before the KEY=VALUE split, so
+      # `ACCOUNT_${SAMBA_USER}=${SAMBA_PASSWORD}` as a list entry is the
+      # documented/supported pattern. A YAML mapping key
+      # (`ACCOUNT_${SAMBA_USER}: ...`) looks right but is not.
+      - "ACCOUNT_${SAMBA_USER}=${SAMBA_PASSWORD}"
+      # The share name comes from the literal [name] inside the VALUE, not
+      # from the SAMBA_VOLUME_CONFIG_<name> suffix (that suffix only exists
+      # to give each env var a unique name) — see entrypoint.sh's VOL_NAME
+      # extraction (`sed 's/.*\[\(.*\)\].*/\1/g'`). Omitting it silently
+      # drops the directives into [global] instead of creating a real share.
+      - "SAMBA_VOLUME_CONFIG_data=[data]; path = /shares/data; valid users = ${SAMBA_USER}; read only = no"
+    volumes:
+      - /mnt/storage/samba/data:/shares/data
+
+  netdata:
+    <<: *restart-policy
+    image: netdata/netdata:latest
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdataconfig:/etc/netdata
+      - netdatalib:/var/lib/netdata
+      - netdatacache:/var/cache/netdata
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  netdataconfig:
+  netdatalib:
+  netdatacache:

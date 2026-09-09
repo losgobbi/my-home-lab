@@ -1,0 +1,10 @@
+storage_label: storage
+storage_fstype: ext4
+storage_mount_path: /mnt/storage
+storage_subdirs:
+  - pihole/etc-pihole
+  - pihole/etc-dnsmasq.d
+  - samba/data
+
+compose_remote_dir: /home/gobbi/docker/homelab
+compose_local_dir: "{{ playbook_dir }}/../docker"
