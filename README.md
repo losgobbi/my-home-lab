@@ -4,7 +4,7 @@ Pi-hole + Samba + Netdata running in Docker on a Raspberry Pi 4 (`pegasus.local`
 
 ## Architecture
 
-- 1 Raspberry Pi 4 (8GB), hostname `pegasus.local`, IP via DHCP (no static IP).
+- 1 Raspberry Pi 4 (8GB), hostname `pegasus.local`.
 - Storage at `/mnt/storage`, mounted by **LABEL** (`storage`), not by device path — lets you swap the physical media (pendrive today, SSD via Argon ONE M.2 later) without changing any config.
 - 3 Docker containers: `pihole`, `samba` (`ghcr.io/servercontainers/samba`), `netdata`.
 
@@ -71,9 +71,29 @@ make ping        # confirms SSH/auth/Python before touching any config
 make check        # dry-run (--check --diff)
 make deploy        # runs for real
 ```
+## Wi-Fi
+
+Wi-Fi is set up when you flash the Pi (Raspberry Pi Imager, see below), not by Ansible: Ansible needs the network to reach the Pi in the first place.
+
+**5 GHz caveat:** the Pi 4's Wi-Fi firmware keeps **channels 144–165 disabled**, even with the country set to BR. A 5 GHz network on channel 149–165 is invisible to the Pi. Use a 2.4 GHz network, or a 5 GHz one on channel 36–48.
+
+## Reflashing the Pi from scratch
+
+1. **Flash with Raspberry Pi Imager** and open its OS customisation settings:
+   - hostname `pegasus`, user `gobbi`, enable SSH (public-key auth with your key is best)
+   - Wi-Fi: SSID `<ssid>` (2.4 GHz, see the caveat above) and password, Wi-Fi country **BR**
+2. **Boot and check it's reachable.** The SSH host key has changed, so clear the old one first:
+   ```bash
+   ssh-keygen -R pegasus.local
+   ssh gobbi@pegasus.local echo ok
+   ```
+3. **Storage:** if the pendrive/SSD is the same one, **don't reformat it**. It already has the `storage` label and your data.
+4. **Deploy:** `make ping && make deploy`.
+5. **Router:** the DHCP reservation is tied to the Wi-Fi MAC.
+
 ## Manual post-deploy steps (out of Ansible's scope)
 
-**Pi-hole**: configure your router's DNS (in the DHCP settings) to point to the Pi's IP — that way every device on the network uses Pi-hole automatically, without configuring each one individually. Then log in at `http://pegasus.local/admin` (password = `PIHOLE_ADMIN_PASSWORD`) to review blocklists and the whitelist.
+**Pi-hole**: log in at `http://pegasus.local/admin` (password = `PIHOLE_ADMIN_PASSWORD`) to review blocklists and the whitelist.
 
 **Samba — how to access the `data` share**:
 - Windows: `\\pegasus.local\data` in File Explorer (use the IP directly if `.local` doesn't resolve — Windows sometimes needs Bonjour installed)
